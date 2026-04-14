@@ -5,7 +5,7 @@ import uuid
 
 def _data_path():
     home = os.path.expanduser("~")
-    directory = os.path.join(home, ".internet_radio")
+    directory = os.path.join(home, ".airstream")
     os.makedirs(directory, exist_ok=True)
     return os.path.join(directory, "data.json")
 

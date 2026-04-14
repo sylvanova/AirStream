@@ -5,7 +5,7 @@ SERVERS = [
     "https://nl1.api.radio-browser.info",
 ]
 TIMEOUT = 10
-USER_AGENT = "InternetRadioApp/1.0"
+USER_AGENT = "AirStream/1.0"
 
 
 def _get(path, params=None):

@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Internet Radio")
+        self.setWindowTitle("AirStream")
         self.setMinimumSize(700, 500)
 
         self._player = AudioPlayer(self)
