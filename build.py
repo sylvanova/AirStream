@@ -22,14 +22,12 @@ def build_windows():
 def build_macos():
     subprocess.run([
         sys.executable, "-m", "PyInstaller",
-        "--noconfirm", "--windowed", "--onefile",
+        "--noconfirm", "--windowed",
         "--name", "AirStream",
         "--osx-bundle-identifier", "com.airstream.app",
         "main.py",
     ], check=True)
     print("\nBuild complete: dist/AirStream.app")
-    print("To create a DMG, run:")
-    print("  hdiutil create -volname AirStream -srcfolder dist/AirStream.app -ov -format UDZO dist/AirStream.dmg")
 
 
 def build_linux():

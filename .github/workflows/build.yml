@@ -44,7 +44,9 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python build.py macos
-      - run: hdiutil create -volname AirStream -srcfolder dist/AirStream.app -ov -format UDZO dist/AirStream.dmg
+      - run: |
+          cd dist
+          hdiutil create -volname AirStream -srcfolder AirStream.app -ov -format UDZO AirStream.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: AirStream-macOS
