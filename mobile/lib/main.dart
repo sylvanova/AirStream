@@ -1,12 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
 import 'services/audio_service.dart';
 import 'screens/home_screen.dart';
 
 late AudioPlayerHandler audioHandler;
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  audioHandler = AudioPlayerHandler();
+  try {
+    audioHandler = await AudioService.init(
+      builder: () => AudioPlayerHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.airstream.airstream.channel.audio',
+        androidNotificationChannelName: 'AirStream',
+        androidNotificationOngoing: true,
+      ),
+    );
+  } catch (e) {
+    debugPrint('AIRSTREAM: AudioService.init failed: $e, using fallback');
+    audioHandler = AudioPlayerHandler();
+  }
   runApp(const AirStreamApp());
 }
 
