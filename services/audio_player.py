@@ -12,6 +12,7 @@ class AudioPlayer(QObject):
         self._player.setAudioOutput(self._audio_output)
         self._current_url = ""
         self._last_state = "stopped"
+        self._paused = False
 
         self._player.playbackStateChanged.connect(self._on_playback_state)
         self._player.errorOccurred.connect(self._on_error)
@@ -19,22 +20,36 @@ class AudioPlayer(QObject):
 
     def play(self, url):
         self._current_url = url
+        self._paused = False
+        self._player.stop()
         self._player.setSource(QUrl(url))
         self._player.play()
 
     def pause(self):
-        self._player.pause()
+        # Live streams don't support real pause — stop the stream instead
+        self._player.stop()
+        self._player.setSource(QUrl())
+        self._paused = True
+        self._update_state("paused")
+
+    def resume(self):
+        if self._paused and self._current_url:
+            self._paused = False
+            self._player.setSource(QUrl(self._current_url))
+            self._player.play()
 
     def stop(self):
+        self._paused = False
+        self._current_url = ""
         self._player.stop()
+        self._player.setSource(QUrl())
+        self._update_state("stopped")
 
     def toggle_pause(self):
-        if self._last_state == "playing":
-            self._player.pause()
-        elif self._last_state == "paused":
-            self._player.play()
-        elif self._current_url:
-            self.play(self._current_url)
+        if self._last_state == "playing" or self._last_state == "buffering":
+            self.pause()
+        elif self._paused and self._current_url:
+            self.resume()
 
     def is_playing(self):
         return self._last_state == "playing"
@@ -49,6 +64,8 @@ class AudioPlayer(QObject):
         self._audio_output.setVolume(percent / 100.0)
 
     def _on_playback_state(self, state):
+        if self._paused:
+            return  # We handle paused state manually
         state_map = {
             QMediaPlayer.PlaybackState.PlayingState: "playing",
             QMediaPlayer.PlaybackState.PausedState: "paused",
@@ -58,6 +75,8 @@ class AudioPlayer(QObject):
         self._update_state(new_state)
 
     def _on_media_status(self, status):
+        if self._paused:
+            return
         if status == QMediaPlayer.MediaStatus.BufferingMedia:
             self._update_state("buffering")
         elif status == QMediaPlayer.MediaStatus.LoadingMedia:
@@ -65,6 +84,7 @@ class AudioPlayer(QObject):
 
     def _on_error(self, error, message):
         if error != QMediaPlayer.Error.NoError:
+            self._paused = False
             self._update_state("error")
 
     def _update_state(self, new_state):

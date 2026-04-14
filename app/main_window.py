@@ -165,6 +165,11 @@ class MainWindow(QMainWindow):
                     self._on_space_pressed()
                     return True
 
+            # Ctrl+P to toggle play/pause
+            if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_P:
+                self._on_space_pressed()
+                return True
+
             # Ctrl+Up / Ctrl+Down for volume
             if modifiers == Qt.KeyboardModifier.ControlModifier:
                 if key == Qt.Key.Key_Up:
