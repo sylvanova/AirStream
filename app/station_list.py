@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QTableView, QAbstractItemView, QHeaderView
 
 from app.accessibility import set_accessible_props
@@ -97,6 +98,9 @@ class StationListView(QTableView):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+
+        # Tab should move focus out of the table, not between cells
+        self.setTabKeyNavigation(False)
 
         # Activate on Enter/double-click
         self.activated.connect(self._on_activated)

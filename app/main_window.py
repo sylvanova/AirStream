@@ -129,6 +129,15 @@ class MainWindow(QMainWindow):
             self._on_selection_changed
         )
 
+        # Explicit tab order: country → genre → search → station list → fav → play → view fav → add station
+        QWidget.setTabOrder(self.filter_bar.country_combo, self.filter_bar.genre_combo)
+        QWidget.setTabOrder(self.filter_bar.genre_combo, self.filter_bar.search_field)
+        QWidget.setTabOrder(self.filter_bar.search_field, self.station_list)
+        QWidget.setTabOrder(self.station_list, self.player_controls.fav_button)
+        QWidget.setTabOrder(self.player_controls.fav_button, self.player_controls.play_button)
+        QWidget.setTabOrder(self.player_controls.play_button, self.fav_view_btn)
+        QWidget.setTabOrder(self.fav_view_btn, self.add_station_btn)
+
     def _setup_shortcuts(self):
         # Alt+F to toggle favorite
         self._fav_shortcut = QShortcut(QKeySequence("Alt+F"), self)
@@ -234,18 +243,8 @@ class MainWindow(QMainWindow):
             self._update_fav_button_for(station)
 
     def _on_space_pressed(self):
-        # Don't intercept space when typing in a text field
-        focused = self.focusWidget()
-        if isinstance(focused, (QLineEdit,)):
-            return
-        station = self.player_controls.current_station()
-        if station:
-            self.player_controls.toggle_pause()
-        else:
-            # No station playing yet — play the selected one
-            station = self.station_list.selected_station()
-            if station:
-                self._on_station_activated(station)
+        # Space only toggles play/pause — does not start a new station
+        self.player_controls.toggle_pause()
 
     def _on_stop(self):
         self._player.stop()
