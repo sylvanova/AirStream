@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from app.accessibility import set_accessible_props
+from app.accessibility import set_accessible_props, announce
 
 
 class AddStationDialog(QDialog):
@@ -26,13 +26,13 @@ class AddStationDialog(QDialog):
         layout.addWidget(QLabel("Station Name:"))
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("My Radio Station")
-        set_accessible_props(self.name_edit, "Station name", "Enter a name for the station")
+        set_accessible_props(self.name_edit, "Station name")
         layout.addWidget(self.name_edit)
 
         layout.addWidget(QLabel("Stream URL:"))
         self.url_edit = QLineEdit()
         self.url_edit.setPlaceholderText("https://stream.example.com/radio.mp3")
-        set_accessible_props(self.url_edit, "Stream URL", "Enter the stream URL")
+        set_accessible_props(self.url_edit, "Stream URL")
         layout.addWidget(self.url_edit)
 
         buttons = QDialogButtonBox(
@@ -67,41 +67,35 @@ class AddStationDialog(QDialog):
 class FavoritesDialog(QDialog):
     def __init__(self, favorite_stations, custom_stations, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Favorites & Custom Stations")
+        self.setWindowTitle("Favorites")
         self.setMinimumSize(500, 400)
         self._selected_station = None
 
         layout = QVBoxLayout(self)
 
-        layout.addWidget(QLabel("Your favorite and custom stations:"))
+        all_stations = favorite_stations + custom_stations
 
         self.station_list = QListWidget()
-        set_accessible_props(
-            self.station_list,
-            "Favorites list",
-            "Your saved stations. Press Enter to play.",
-        )
+        set_accessible_props(self.station_list, "Favorites")
         layout.addWidget(self.station_list)
 
-        all_stations = favorite_stations + custom_stations
         if not all_stations:
-            item = QListWidgetItem("No favorites or custom stations yet")
+            item = QListWidgetItem("No favorites yet")
             item.setFlags(Qt.ItemFlag.NoItemFlags)
             self.station_list.addItem(item)
         else:
             for s in all_stations:
                 name = s.get("name", "Unknown")
                 country = s.get("country", "")
-                label = f"{name} — {country}" if country else name
-                if s.get("is_custom"):
-                    label = f"[Custom] {label}"
+                label = f"{name}, {country}" if country else name
                 item = QListWidgetItem(label)
                 item.setData(Qt.ItemDataRole.UserRole, s)
                 self.station_list.addItem(item)
+            self.station_list.setCurrentRow(0)
 
         btn_layout = QHBoxLayout()
-        self.play_btn = QPushButton("Play Selected")
-        set_accessible_props(self.play_btn, "Play selected station")
+        self.play_btn = QPushButton("Play")
+        set_accessible_props(self.play_btn, "Play")
         self.play_btn.clicked.connect(self._on_play)
 
         self.close_btn = QPushButton("Close")
@@ -114,6 +108,13 @@ class FavoritesDialog(QDialog):
 
         self.station_list.itemActivated.connect(self._on_item_activated)
         self.station_list.setFocus()
+
+        # Announce just the count and first station name
+        if all_stations:
+            first = all_stations[0].get("name", "Unknown")
+            QTimer.singleShot(200, lambda: announce(self, f"Favorites. {first}"))
+        else:
+            QTimer.singleShot(200, lambda: announce(self, "No favorites"))
 
     def _on_play(self):
         item = self.station_list.currentItem()

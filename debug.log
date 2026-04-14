@@ -1,0 +1,87 @@
+2026-04-14 15:21:52,522 [INFO] Window shown, ready
+2026-04-14 15:21:52,550 [DEBUG] Starting new HTTPS connection (1): de1.api.radio-browser.info:443
+2026-04-14 15:21:52,556 [DEBUG] Focus: None -> QComboBox(Country)
+2026-04-14 15:21:53,017 [DEBUG] https://de1.api.radio-browser.info:443 "GET /json/stations/topclick/100?hidebroken=true HTTP/1.1" 200 None
+2026-04-14 15:21:53,131 [DEBUG] Starting new HTTPS connection (1): de1.api.radio-browser.info:443
+2026-04-14 15:21:53,155 [DEBUG] Focus: QComboBox(Country) -> StationListView(Stations)
+2026-04-14 15:21:53,650 [DEBUG] https://de1.api.radio-browser.info:443 "GET /json/countries?order=stationcount&reverse=true&limit=50 HTTP/1.1" 200 2992
+2026-04-14 15:21:53,662 [DEBUG] Starting new HTTPS connection (1): de1.api.radio-browser.info:443
+2026-04-14 15:21:54,015 [DEBUG] https://de1.api.radio-browser.info:443 "GET /json/tags?order=stationcount&reverse=true&limit=50 HTTP/1.1" 200 2014
+2026-04-14 15:21:54,136 [DEBUG] Key 16777217 on StationListView (obj=QWindow)
+2026-04-14 15:21:54,136 [DEBUG] Key 16777217 on StationListView (obj=StationListView)
+2026-04-14 15:21:54,136 [DEBUG] Focus: StationListView(Stations) -> QPushButton(Add to favorites)
+2026-04-14 15:21:55,590 [DEBUG] Key 16777217 on QPushButton (obj=QWindow)
+2026-04-14 15:21:55,590 [DEBUG] Key 16777217 on QPushButton (obj=QPushButton)
+2026-04-14 15:21:55,590 [DEBUG] Focus: QPushButton(Add to favorites) -> QPushButton(Play)
+2026-04-14 15:21:55,910 [DEBUG] Key 16777217 on QPushButton (obj=QWindow)
+2026-04-14 15:21:55,910 [DEBUG] Key 16777217 on QPushButton (obj=QPushButton)
+2026-04-14 15:21:55,910 [DEBUG] Focus: QPushButton(Play) -> QPushButton(View favorites)
+2026-04-14 15:21:56,242 [DEBUG] Key 16777217 on QPushButton (obj=QWindow)
+2026-04-14 15:21:56,242 [DEBUG] Key 16777217 on QPushButton (obj=QPushButton)
+2026-04-14 15:21:56,242 [DEBUG] Focus: QPushButton(View favorites) -> QPushButton(Add custom station)
+2026-04-14 15:21:57,012 [DEBUG] Key 16777217 on QPushButton (obj=QWindow)
+2026-04-14 15:21:57,012 [DEBUG] Key 16777217 on QPushButton (obj=QPushButton)
+2026-04-14 15:21:57,012 [DEBUG] Focus: QPushButton(Add custom station) -> QComboBox(Country)
+2026-04-14 15:21:58,652 [DEBUG] Key 16777220 on QComboBox (obj=QWindow)
+2026-04-14 15:21:58,652 [DEBUG] Enter opening combo: Country
+2026-04-14 15:21:58,820 [DEBUG] Focus: QComboBox(Country) -> QListView()
+2026-04-14 15:22:00,733 [DEBUG] Focus: QListView() -> QComboBox(Country)
+2026-04-14 15:22:00,735 [DEBUG] Key 16777220 on QComboBox (obj=QWindow)
+2026-04-14 15:22:00,735 [DEBUG] Enter on combo ignored (cooldown)
+2026-04-14 15:22:00,738 [DEBUG] Starting new HTTPS connection (1): de1.api.radio-browser.info:443
+2026-04-14 15:22:01,153 [DEBUG] https://de1.api.radio-browser.info:443 "GET /json/stations/search?order=clickcount&reverse=true&limit=100&hidebroken=true&countrycode=DE HTTP/1.1" 200 None
+2026-04-14 15:22:04,254 [DEBUG] Key 16777217 on QComboBox (obj=QWindow)
+2026-04-14 15:22:04,254 [DEBUG] Key 16777217 on QComboBox (obj=QComboBox)
+2026-04-14 15:22:04,254 [DEBUG] Focus: QComboBox(Country) -> QComboBox(Genre)
+2026-04-14 15:22:05,650 [DEBUG] Key 16777217 on QComboBox (obj=QWindow)
+2026-04-14 15:22:05,652 [DEBUG] Key 16777217 on QComboBox (obj=QComboBox)
+2026-04-14 15:22:05,654 [DEBUG] Focus: QComboBox(Genre) -> QLineEdit(Search)
+2026-04-14 15:22:06,534 [DEBUG] Focus: QLineEdit(Search) -> QComboBox(Genre)
+2026-04-14 15:22:06,790 [DEBUG] Focus: QComboBox(Genre) -> QComboBox(Country)
+2026-04-14 15:22:07,152 [DEBUG] Key 16777220 on QComboBox (obj=QWindow)
+2026-04-14 15:22:07,152 [DEBUG] Enter opening combo: Country
+2026-04-14 15:22:07,322 [DEBUG] Focus: QComboBox(Country) -> QListView()
+2026-04-14 15:22:09,072 [DEBUG] Focus: QListView() -> QComboBox(Country)
+2026-04-14 15:22:09,074 [DEBUG] Key 16777220 on QComboBox (obj=QWindow)
+2026-04-14 15:22:09,074 [DEBUG] Enter on combo ignored (cooldown)
+2026-04-14 15:22:09,074 [DEBUG] Starting new HTTPS connection (1): de1.api.radio-browser.info:443
+2026-04-14 15:22:09,481 [DEBUG] https://de1.api.radio-browser.info:443 "GET /json/stations/search?order=clickcount&reverse=true&limit=100&hidebroken=true&countrycode=FR HTTP/1.1" 200 None
+2026-04-14 15:22:09,530 [DEBUG] Key 16777217 on QComboBox (obj=QWindow)
+2026-04-14 15:22:09,530 [DEBUG] Key 16777217 on QComboBox (obj=QComboBox)
+2026-04-14 15:22:09,530 [DEBUG] Focus: QComboBox(Country) -> QComboBox(Genre)
+2026-04-14 15:22:10,142 [DEBUG] Key 16777220 on QComboBox (obj=QWindow)
+2026-04-14 15:22:10,143 [DEBUG] Enter opening combo: Genre
+2026-04-14 15:22:10,304 [DEBUG] Focus: QComboBox(Genre) -> QListView()
+2026-04-14 15:22:11,271 [DEBUG] Focus: QListView() -> QComboBox(Genre)
+2026-04-14 15:22:11,271 [DEBUG] Key 16777220 on QComboBox (obj=QWindow)
+2026-04-14 15:22:11,280 [DEBUG] Enter on combo ignored (cooldown)
+2026-04-14 15:22:11,280 [DEBUG] Starting new HTTPS connection (1): de1.api.radio-browser.info:443
+2026-04-14 15:22:11,821 [DEBUG] https://de1.api.radio-browser.info:443 "GET /json/stations/search?order=clickcount&reverse=true&limit=100&hidebroken=true&countrycode=FR&tag=pop HTTP/1.1" 200 None
+2026-04-14 15:22:11,980 [DEBUG] Key 16777217 on QComboBox (obj=QWindow)
+2026-04-14 15:22:11,980 [DEBUG] Key 16777217 on QComboBox (obj=QComboBox)
+2026-04-14 15:22:11,980 [DEBUG] Focus: QComboBox(Genre) -> QLineEdit(Search)
+2026-04-14 15:22:13,580 [DEBUG] Key 16777217 on QLineEdit (obj=QWindow)
+2026-04-14 15:22:13,580 [DEBUG] Key 16777217 on QLineEdit (obj=QLineEdit)
+2026-04-14 15:22:13,583 [DEBUG] Focus: QLineEdit(Search) -> StationListView(Stations)
+2026-04-14 15:22:16,302 [DEBUG] Key 16777220 on StationListView (obj=QWindow)
+2026-04-14 15:22:16,302 [DEBUG] Key 16777220 on StationListView (obj=StationListView)
+2026-04-14 15:22:16,302 [INFO] Playing: EuroDance 90 radio — https://stream-eurodance90.fr/radio/8000/128.mp3?1627933323
+2026-04-14 15:22:16,304 [DEBUG] Key 16777220 on StationListView (obj=QWidget)
+2026-04-14 15:22:16,304 [DEBUG] Key 16777220 on StationListView (obj=MainWindow)
+2026-04-14 15:22:25,306 [DEBUG] Focus: StationListView(Stations) -> QLineEdit(Search)
+2026-04-14 15:22:25,736 [DEBUG] Focus: QLineEdit(Search) -> QComboBox(Genre)
+2026-04-14 15:22:28,236 [DEBUG] Key 32 on QComboBox (obj=QWindow)
+2026-04-14 15:22:28,236 [DEBUG] Space -> play/pause (focused=QComboBox)
+2026-04-14 15:22:28,236 [DEBUG] toggle_pause: player state=buffering, paused=False, url=https://stream-eurodance90.fr/radio/8000/128.mp3?1627933323
+2026-04-14 15:22:33,072 [DEBUG] Ctrl+L: view favorites
+2026-04-14 15:22:33,119 [DEBUG] Focus: QComboBox(Genre) -> QListWidget(Favorites)
+2026-04-14 15:22:33,931 [DEBUG] Key 32 on QListWidget (obj=QWindow)
+2026-04-14 15:22:33,931 [DEBUG] Space -> play/pause (focused=QListWidget)
+2026-04-14 15:22:33,931 [DEBUG] toggle_pause: player state=paused, paused=True, url=https://stream-eurodance90.fr/radio/8000/128.mp3?1627933323
+2026-04-14 15:22:35,063 [DEBUG] Key 32 on QListW2026-04-14 15:22:48,223 [DEBUG] Focus: None -> QComboBox(Country)
+2026-04-14 15:22:48,593 [DEBUG] Focus: QComboBox(Country) -> None
+_pause: player state=buffering, paused=False, url=https://stream-eurodance90.fr/radio/8000/128.mp3?1627933323
+2026-04-14 15:22:42,101 [DEBUG] Focus: QListWidget(Favorites) -> None
+2026-04-14 15:22:42,115 [DEBUG] Focus: None -> QComboBox(Genre)
+2026-04-14 15:22:42,115 [DEBUG] Focus: QComboBox(Genre) -> QPushButton(View favorites)
+2026-04-14 15:22:45,717 [DEBUG] Focus: QPushButton(View favorites) -> None

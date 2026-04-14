@@ -1,10 +1,14 @@
 import sys
 import logging
 
+LOG_FILE = "debug.log"
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    stream=sys.stderr,
+    handlers=[
+        logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8"),
+        logging.StreamHandler(sys.stderr),
+    ],
 )
 
 from PySide6.QtWidgets import QApplication

@@ -16,11 +16,7 @@ class PlayerControls(QWidget):
         set_accessible_props(self.fav_button, "Add to favorites")
 
         self.play_button = QPushButton("Play")
-        set_accessible_props(
-            self.play_button,
-            "Play",
-            "Play or pause the current station",
-        )
+        set_accessible_props(self.play_button, "Play")
 
         self.now_playing_label = QLabel("Not playing")
         set_accessible_props(self.now_playing_label, "Not playing")

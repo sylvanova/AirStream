@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, QThread, QObject, QEvent, Signal, Slot
 from PySide6.QtGui import QShortcut, QKeySequence
 
 log = logging.getLogger(__name__)
+import time
+
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -14,6 +16,7 @@ from PySide6.QtWidgets import (
     QStatusBar,
     QLineEdit,
     QComboBox,
+    QListView,
 )
 
 from app.accessibility import announce, set_accessible_props
@@ -72,6 +75,7 @@ class MainWindow(QMainWindow):
         self._player = AudioPlayer(self)
         self._initial_load = True
         self._is_searching = False
+        self._combo_cooldown = 0
         self._setup_ui()
         self._setup_shortcuts()
         self._setup_worker()
@@ -114,8 +118,12 @@ class MainWindow(QMainWindow):
         # Connect signals
         self.filter_bar.filters_changed.connect(self._on_filters_changed)
         self.station_list.station_activated.connect(self._on_station_activated)
+        self.player_controls.fav_button.clicked.connect(lambda: log.debug("BUTTON CLICK: fav_button"))
         self.player_controls.fav_button.clicked.connect(self._on_fav_clicked)
+        self.player_controls.play_button.clicked.connect(lambda: log.debug("BUTTON CLICK: play_button"))
+        self.fav_view_btn.clicked.connect(lambda: log.debug("BUTTON CLICK: fav_view_btn"))
         self.fav_view_btn.clicked.connect(self._on_view_favorites)
+        self.add_station_btn.clicked.connect(lambda: log.debug("BUTTON CLICK: add_station_btn"))
         self.add_station_btn.clicked.connect(self._on_add_station)
 
         # Update favorite button when selection changes
@@ -141,22 +149,61 @@ class MainWindow(QMainWindow):
         self._stop_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
         self._stop_shortcut.activated.connect(self._on_stop)
 
-        # Install app-wide event filter so Space works regardless of focus
+        # Install app-wide event filter
         QApplication.instance().installEventFilter(self)
+
+        # Log focus changes to debug Tab navigation
+        QApplication.instance().focusChanged.connect(self._on_focus_changed)
+
+    def _on_focus_changed(self, old, new):
+        old_name = f"{type(old).__name__}({old.accessibleName()})" if old else "None"
+        new_name = f"{type(new).__name__}({new.accessibleName()})" if new else "None"
+        log.debug(f"Focus: {old_name} -> {new_name}")
+        # When focus returns from a combo dropdown list to the combo, set cooldown
+        # so Enter doesn't immediately reopen it
+        if isinstance(old, QListView) and isinstance(new, QComboBox):
+            self._combo_cooldown = time.monotonic()
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
 
-            # Space to toggle play/pause — only when station list has focus
+            # Log Enter/Space/Tab on buttons for debugging
+            if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space, Qt.Key.Key_Tab):
+                focused = QApplication.focusWidget()
+                log.debug(f"Key {key} on {type(focused).__name__ if focused else 'None'} (obj={type(obj).__name__})")
+
+            # Make Enter activate focused buttons and open combo boxes
+            if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                focused = QApplication.focusWidget()
+                if isinstance(focused, QPushButton):
+                    log.debug(f"Enter activating button: {focused.accessibleName()}")
+                    focused.click()
+                    return True
+                if isinstance(focused, QComboBox):
+                    now = time.monotonic()
+                    if now - self._combo_cooldown < 0.3:
+                        log.debug(f"Enter on combo ignored (cooldown)")
+                        return True
+                    if focused.view().isVisible():
+                        log.debug(f"Enter closing combo: {focused.accessibleName()}")
+                        focused.hidePopup()
+                        self._combo_cooldown = now
+                    else:
+                        log.debug(f"Enter opening combo: {focused.accessibleName()}")
+                        focused.showPopup()
+                        self._combo_cooldown = now
+                    return True
+
+            # Space = play/pause ALWAYS, except in the search field
             if key == Qt.Key.Key_Space and modifiers == Qt.KeyboardModifier.NoModifier:
                 focused = QApplication.focusWidget()
-                is_list = focused and (focused is self.station_list or self.station_list.isAncestorOf(focused))
-                log.debug(f"Space pressed, focused={type(focused).__name__}, is_station_list={is_list}")
-                if is_list:
-                    self._on_space_pressed()
-                    return True
+                if isinstance(focused, QLineEdit):
+                    return False  # let search field type a space
+                log.debug(f"Space -> play/pause (focused={type(focused).__name__ if focused else 'None'})")
+                self._on_space_pressed()
+                return True
 
             if modifiers == Qt.KeyboardModifier.ControlModifier:
                 if key == Qt.Key.Key_P:

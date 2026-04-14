@@ -15,27 +15,15 @@ class FilterBar(QWidget):
 
         self.country_combo = QComboBox()
         self.country_combo.addItem("All Countries", "")
-        set_accessible_props(
-            self.country_combo,
-            "Country filter",
-            "Select a country to filter stations",
-        )
+        set_accessible_props(self.country_combo, "Country")
 
         self.genre_combo = QComboBox()
         self.genre_combo.addItem("All Genres", "")
-        set_accessible_props(
-            self.genre_combo,
-            "Genre filter",
-            "Select a genre to filter stations",
-        )
+        set_accessible_props(self.genre_combo, "Genre")
 
         self.search_field = QLineEdit()
         self.search_field.setPlaceholderText("Search stations...")
-        set_accessible_props(
-            self.search_field,
-            "Search stations",
-            "Type to search stations by name",
-        )
+        set_accessible_props(self.search_field, "Search")
 
         layout.addWidget(self.country_combo, 1)
         layout.addWidget(self.genre_combo, 1)
@@ -82,6 +70,11 @@ class FilterBar(QWidget):
         name = self.search_field.text().strip()
         country = self.country_combo.currentData() or ""
         tag = self.genre_combo.currentData() or ""
+        # Don't fire if nothing meaningful changed
+        new_filters = (name, country, tag)
+        if hasattr(self, '_last_filters') and new_filters == self._last_filters:
+            return
+        self._last_filters = new_filters
         self.filters_changed.emit(name, country, tag)
 
     def current_filters(self):

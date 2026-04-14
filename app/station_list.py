@@ -77,11 +77,7 @@ class StationListView(QTableView):
         self._model = StationTableModel(self)
         self.setModel(self._model)
 
-        set_accessible_props(
-            self,
-            "Station list",
-            "List of radio stations. Use arrow keys to navigate, Enter to play.",
-        )
+        set_accessible_props(self, "Stations")
 
         # Selection behavior
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
