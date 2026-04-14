@@ -81,6 +81,7 @@ class MainWindow(QMainWindow):
 
         self._player = AudioPlayer(self)
         self._initial_load = True
+        self._is_searching = False
         self._setup_ui()
         self._setup_shortcuts()
         self._setup_worker()
@@ -158,24 +159,34 @@ class MainWindow(QMainWindow):
             key = event.key()
             modifiers = event.modifiers()
 
-            # Space to toggle play/pause — skip when typing in text fields
+            # Space to toggle play/pause — let it through to text fields and buttons
             if key == Qt.Key.Key_Space and modifiers == Qt.KeyboardModifier.NoModifier:
                 focused = QApplication.focusWidget()
-                if not isinstance(focused, (QLineEdit, QComboBox)):
+                if not isinstance(focused, (QLineEdit, QComboBox, QPushButton)):
                     self._on_space_pressed()
                     return True
 
-            # Ctrl+P to toggle play/pause
-            if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_P:
-                self._on_space_pressed()
-                return True
-
-            # Ctrl+Up / Ctrl+Down for volume
             if modifiers == Qt.KeyboardModifier.ControlModifier:
+                if key == Qt.Key.Key_P:
+                    self._on_space_pressed()
+                    return True
+                if key == Qt.Key.Key_B:
+                    self._on_fav_clicked()
+                    return True
+                if key == Qt.Key.Key_L:
+                    self._on_view_favorites()
+                    return True
+                if key == Qt.Key.Key_N:
+                    self._on_add_station()
+                    return True
+                if key == Qt.Key.Key_F:
+                    self.filter_bar.search_field.setFocus()
+                    self.filter_bar.search_field.selectAll()
+                    return True
                 if key == Qt.Key.Key_Up:
                     self._volume_up()
                     return True
-                elif key == Qt.Key.Key_Down:
+                if key == Qt.Key.Key_Down:
                     self._volume_down()
                     return True
 
@@ -218,8 +229,17 @@ class MainWindow(QMainWindow):
 
         self.station_list.set_stations(stations)
         count = self.station_list.station_count()
-        self.status_bar.showMessage(f"{count} stations loaded")
-        announce(self, f"{count} stations loaded")
+        if self._is_searching:
+            self._is_searching = False
+            if count == 0:
+                self.status_bar.showMessage("No stations found")
+                announce(self, "No stations found")
+            else:
+                self.status_bar.showMessage(f"Found {count} stations")
+                announce(self, f"Found {count} stations")
+        else:
+            self.status_bar.showMessage(f"{count} stations loaded")
+            announce(self, f"{count} stations loaded")
         # Only grab focus on first load, not when filtering
         if self._initial_load:
             self.station_list.setFocus()
@@ -253,7 +273,9 @@ class MainWindow(QMainWindow):
             )
 
     def _on_filters_changed(self, name, countrycode, tag):
+        self._is_searching = True
         if not name and not countrycode and not tag:
+            self._is_searching = False
             self._request_initial.emit()
         else:
             self._request_search.emit(name, countrycode, tag)
