@@ -58,10 +58,15 @@ class _HomeScreenState extends State<HomeScreen> {
       if (stations.isNotEmpty) {
         await StorageService.saveCachedStations(stations);
       }
+      final countries = results[1] as List<Map<String, dynamic>>;
+      final tags = results[2] as List<Map<String, dynamic>>;
+      debugPrint('AIRSTREAM: Loaded ${stations.length} stations, ${countries.length} countries, ${tags.length} tags');
+      if (countries.isNotEmpty) debugPrint('AIRSTREAM: First country: ${countries[0]}');
+      if (tags.isNotEmpty) debugPrint('AIRSTREAM: First tag: ${tags[0]}');
       setState(() {
         _stations = stations.isEmpty ? [] : stations;
-        _countries = results[1] as List<Map<String, dynamic>>;
-        _tags = results[2] as List<Map<String, dynamic>>;
+        _countries = countries;
+        _tags = tags;
         _favoriteUuids = (results[3] as List<String>).toSet();
         _isLoading = false;
       });
@@ -241,6 +246,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showFilterDialog(String title, List<Map<String, String>> options, String currentValue, void Function(String) onSelected) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(title),
+        children: options.map((opt) => SimpleDialogOption(
+          onPressed: () {
+            Navigator.pop(ctx);
+            onSelected(opt['value']!);
+          },
+          child: Text(opt['name']!),
+        )).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -268,44 +289,32 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: DropdownButton<String>(
-                    value: _selectedCountryCode,
-                    isExpanded: true,
-                    items: [
-                      const DropdownMenuItem(value: '', child: Text('All Countries')),
-                      ..._countries.map((c) => DropdownMenuItem(
-                            value: c['iso_3166_1'] ?? '',
-                            child: Text(
-                              '${c['name']} (${c['stationcount']})',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          )),
-                    ],
-                    onChanged: (v) {
-                      setState(() => _selectedCountryCode = v ?? '');
-                      _doSearch();
-                    },
+                  child: OutlinedButton(
+                    onPressed: () => _showFilterDialog(
+                      'Country',
+                      [{'name': 'All Countries', 'value': ''}, ..._countries.map((c) => {'name': '${c['name']} (${c['stationcount']})', 'value': c['iso_3166_1'] ?? ''})],
+                      _selectedCountryCode,
+                      (v) { setState(() => _selectedCountryCode = v); _doSearch(); },
+                    ),
+                    child: Text(
+                      _selectedCountryCode.isEmpty ? 'All Countries' : _countries.firstWhere((c) => c['iso_3166_1'] == _selectedCountryCode, orElse: () => {'name': _selectedCountryCode})['name'] ?? _selectedCountryCode,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: DropdownButton<String>(
-                    value: _selectedTag,
-                    isExpanded: true,
-                    items: [
-                      const DropdownMenuItem(value: '', child: Text('All Genres')),
-                      ..._tags.map((t) => DropdownMenuItem(
-                            value: t['name'] ?? '',
-                            child: Text(
-                              '${t['name']} (${t['stationcount']})',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          )),
-                    ],
-                    onChanged: (v) {
-                      setState(() => _selectedTag = v ?? '');
-                      _doSearch();
-                    },
+                  child: OutlinedButton(
+                    onPressed: () => _showFilterDialog(
+                      'Genre',
+                      [{'name': 'All Genres', 'value': ''}, ..._tags.map((t) => {'name': '${t['name']} (${t['stationcount']})', 'value': t['name'] ?? ''})],
+                      _selectedTag,
+                      (v) { setState(() => _selectedTag = v); _doSearch(); },
+                    ),
+                    child: Text(
+                      _selectedTag.isEmpty ? 'All Genres' : _selectedTag,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ],
