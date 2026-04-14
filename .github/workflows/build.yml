@@ -1,0 +1,36 @@
+name: Build AirStream
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python build.py windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AirStream-Windows
+          path: dist/AirStream.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python build.py macos
+      - run: hdiutil create -volname AirStream -srcfolder dist/AirStream.app -ov -format UDZO dist/AirStream.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AirStream-macOS
+          path: dist/AirStream.dmg
