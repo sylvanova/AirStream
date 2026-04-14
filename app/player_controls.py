@@ -8,6 +8,7 @@ class PlayerControls(QWidget):
         super().__init__(parent)
         self._player = player
         self._current_station = None
+        self._announced_loading = False
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -36,6 +37,7 @@ class PlayerControls(QWidget):
 
     def play_station(self, station):
         self._current_station = station
+        self._announced_loading = False
         url = station.get("url_resolved") or station.get("url", "")
         if url:
             self._player.play(url)
@@ -63,6 +65,7 @@ class PlayerControls(QWidget):
 
     def _on_state_changed(self, state):
         if state == "playing":
+            self._announced_loading = False
             self.play_button.setText("Pause")
             set_accessible_props(self.play_button, "Pause")
         elif state == "paused":
@@ -79,4 +82,6 @@ class PlayerControls(QWidget):
             self.play_button.setText("Play")
             set_accessible_props(self.play_button, "Play")
         elif state == "buffering":
-            announce(self, "Buffering...")
+            if not self._announced_loading:
+                self._announced_loading = True
+                announce(self, "Loading")
