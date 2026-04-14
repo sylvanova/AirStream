@@ -50,12 +50,7 @@ class PlayerControls(QWidget):
 
     def toggle_pause(self):
         if self._current_station:
-            if self._player.is_playing():
-                self._player.pause()
-            elif self._player._last_state == "paused":
-                self._player.pause()  # VLC pause toggles
-            else:
-                self.play_station(self._current_station)
+            self._player.toggle_pause()
 
     def update_favorite_button(self, is_fav):
         if is_fav:
