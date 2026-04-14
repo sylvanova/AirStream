@@ -42,6 +42,12 @@ class AudioPlayer(QObject):
     def current_url(self):
         return self._current_url
 
+    def volume(self):
+        return round(self._audio_output.volume() * 100)
+
+    def set_volume(self, percent):
+        self._audio_output.setVolume(percent / 100.0)
+
     def _on_playback_state(self, state):
         state_map = {
             QMediaPlayer.PlaybackState.PlayingState: "playing",

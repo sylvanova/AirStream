@@ -1,6 +1,7 @@
-from PySide6.QtCore import Qt, QThread, QObject, Signal, Slot
+from PySide6.QtCore import Qt, QThread, QObject, QEvent, Signal, Slot
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
+    QApplication,
     QMainWindow,
     QWidget,
     QVBoxLayout,
@@ -8,6 +9,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStatusBar,
     QLineEdit,
+    QComboBox,
 )
 
 from app.accessibility import announce, set_accessible_props
@@ -78,6 +80,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(700, 500)
 
         self._player = AudioPlayer(self)
+        self._initial_load = True
         self._setup_ui()
         self._setup_shortcuts()
         self._setup_worker()
@@ -147,15 +150,31 @@ class MainWindow(QMainWindow):
         self._stop_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
         self._stop_shortcut.activated.connect(self._on_stop)
 
-    def keyPressEvent(self, event):
-        # Space to toggle play/pause — but only when not in a text input
-        if event.key() == Qt.Key.Key_Space:
-            focused = self.focusWidget()
-            if not isinstance(focused, (QLineEdit,)):
-                self._on_space_pressed()
-                event.accept()
-                return
-        super().keyPressEvent(event)
+        # Install app-wide event filter so Space works regardless of focus
+        QApplication.instance().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.KeyPress:
+            key = event.key()
+            modifiers = event.modifiers()
+
+            # Space to toggle play/pause — skip when typing in text fields
+            if key == Qt.Key.Key_Space and modifiers == Qt.KeyboardModifier.NoModifier:
+                focused = QApplication.focusWidget()
+                if not isinstance(focused, (QLineEdit, QComboBox)):
+                    self._on_space_pressed()
+                    return True
+
+            # Ctrl+Up / Ctrl+Down for volume
+            if modifiers == Qt.KeyboardModifier.ControlModifier:
+                if key == Qt.Key.Key_Up:
+                    self._volume_up()
+                    return True
+                elif key == Qt.Key.Key_Down:
+                    self._volume_down()
+                    return True
+
+        return super().eventFilter(obj, event)
 
     def _setup_worker(self):
         self._worker_thread = QThread()
@@ -196,7 +215,10 @@ class MainWindow(QMainWindow):
         count = self.station_list.station_count()
         self.status_bar.showMessage(f"{count} stations loaded")
         announce(self, f"{count} stations loaded")
-        self.station_list.setFocus()
+        # Only grab focus on first load, not when filtering
+        if self._initial_load:
+            self.station_list.setFocus()
+            self._initial_load = False
 
     def _on_countries_loaded(self, countries):
         self.filter_bar.populate_countries(countries)
@@ -245,6 +267,20 @@ class MainWindow(QMainWindow):
     def _on_space_pressed(self):
         # Space only toggles play/pause — does not start a new station
         self.player_controls.toggle_pause()
+
+    def _volume_up(self):
+        vol = self._player.volume()
+        new_vol = min(100, vol + 10)
+        self._player.set_volume(new_vol)
+        announce(self, f"Volume {new_vol} percent")
+        self.status_bar.showMessage(f"Volume: {new_vol}%", 2000)
+
+    def _volume_down(self):
+        vol = self._player.volume()
+        new_vol = max(0, vol - 10)
+        self._player.set_volume(new_vol)
+        announce(self, f"Volume {new_vol} percent")
+        self.status_bar.showMessage(f"Volume: {new_vol}%", 2000)
 
     def _on_stop(self):
         self._player.stop()
