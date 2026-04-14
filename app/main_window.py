@@ -1,5 +1,9 @@
+import logging
+
 from PySide6.QtCore import Qt, QThread, QObject, QEvent, Signal, Slot
 from PySide6.QtGui import QShortcut, QKeySequence
+
+log = logging.getLogger(__name__)
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -25,7 +29,6 @@ class ApiWorker(QObject):
     stations_loaded = Signal(list)
     countries_loaded = Signal(list)
     tags_loaded = Signal(list)
-    favorites_loaded = Signal(list, list)  # favorite stations, custom stations
     error = Signal(str)
 
     @Slot()
@@ -56,23 +59,10 @@ class ApiWorker(QObject):
         except Exception as e:
             self.error.emit(str(e))
 
-    @Slot()
-    def fetch_favorites(self):
-        fav_uuids = storage.get_favorites()
-        custom = storage.get_custom_stations()
-        fav_stations = []
-        if fav_uuids:
-            try:
-                fav_stations = radio_api.fetch_stations_by_uuid(fav_uuids)
-            except Exception:
-                pass
-        self.favorites_loaded.emit(fav_stations, custom)
-
 
 class MainWindow(QMainWindow):
     _request_search = Signal(str, str, str)
     _request_initial = Signal()
-    _request_favorites = Signal()
 
     def __init__(self):
         super().__init__()
@@ -159,27 +149,34 @@ class MainWindow(QMainWindow):
             key = event.key()
             modifiers = event.modifiers()
 
-            # Space to toggle play/pause — let it through to text fields and buttons
+            # Space to toggle play/pause — only when station list has focus
             if key == Qt.Key.Key_Space and modifiers == Qt.KeyboardModifier.NoModifier:
                 focused = QApplication.focusWidget()
-                if not isinstance(focused, (QLineEdit, QComboBox, QPushButton)):
+                is_list = focused and (focused is self.station_list or self.station_list.isAncestorOf(focused))
+                log.debug(f"Space pressed, focused={type(focused).__name__}, is_station_list={is_list}")
+                if is_list:
                     self._on_space_pressed()
                     return True
 
             if modifiers == Qt.KeyboardModifier.ControlModifier:
                 if key == Qt.Key.Key_P:
+                    log.debug("Ctrl+P: toggle play/pause")
                     self._on_space_pressed()
                     return True
                 if key == Qt.Key.Key_B:
+                    log.debug("Ctrl+B: toggle favorite")
                     self._on_fav_clicked()
                     return True
                 if key == Qt.Key.Key_L:
+                    log.debug("Ctrl+L: view favorites")
                     self._on_view_favorites()
                     return True
                 if key == Qt.Key.Key_N:
+                    log.debug("Ctrl+N: add custom station")
                     self._on_add_station()
                     return True
                 if key == Qt.Key.Key_F:
+                    log.debug("Ctrl+F: focus search")
                     self.filter_bar.search_field.setFocus()
                     self.filter_bar.search_field.selectAll()
                     return True
@@ -200,12 +197,10 @@ class MainWindow(QMainWindow):
         self._worker.stations_loaded.connect(self._on_stations_loaded)
         self._worker.countries_loaded.connect(self._on_countries_loaded)
         self._worker.tags_loaded.connect(self._on_tags_loaded)
-        self._worker.favorites_loaded.connect(self._on_favorites_loaded)
         self._worker.error.connect(self._on_api_error)
 
         self._request_initial.connect(self._worker.fetch_initial)
         self._request_search.connect(self._worker.search)
-        self._request_favorites.connect(self._worker.fetch_favorites)
 
         self._worker_thread.start()
 
@@ -251,7 +246,7 @@ class MainWindow(QMainWindow):
     def _on_tags_loaded(self, tags):
         self.filter_bar.populate_genres(tags)
 
-    def _on_favorites_loaded(self, fav_stations, custom_stations):
+    def _show_favorites_dialog(self, fav_stations, custom_stations):
         dlg = FavoritesDialog(fav_stations, custom_stations, self)
         if dlg.exec() == FavoritesDialog.DialogCode.Accepted:
             station = dlg.selected_station()
@@ -282,6 +277,7 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Searching...")
 
     def _on_station_activated(self, station):
+        log.info(f"Playing: {station.get('name')} — {station.get('url_resolved', station.get('url', ''))}")
         self.player_controls.play_station(station)
         self._update_fav_button_for(station)
 
@@ -292,7 +288,7 @@ class MainWindow(QMainWindow):
             self._update_fav_button_for(station)
 
     def _on_space_pressed(self):
-        # Space only toggles play/pause — does not start a new station
+        log.debug(f"toggle_pause: player state={self._player._last_state}, paused={self._player._paused}, url={self._player._current_url}")
         self.player_controls.toggle_pause()
 
     def _volume_up(self):
@@ -316,11 +312,14 @@ class MainWindow(QMainWindow):
         announce(self, "Playback stopped")
 
     def _on_fav_clicked(self):
-        station = (
-            self.player_controls.current_station()
-            or self.station_list.selected_station()
-        )
+        cur = self.player_controls.current_station()
+        sel = self.station_list.selected_station()
+        station = cur or sel
+        log.debug(f"fav_clicked: current={cur.get('name') if cur else None}, selected={sel.get('name') if sel else None}")
         if not station:
+            log.debug("fav_clicked: no station available")
+            self.status_bar.showMessage("No station selected")
+            announce(self, "No station selected")
             return
         uuid = station.get("stationuuid", "")
         if not uuid:
@@ -340,7 +339,13 @@ class MainWindow(QMainWindow):
         self.player_controls.update_favorite_button(is_fav)
 
     def _on_view_favorites(self):
-        self._request_favorites.emit()
+        # Load favorites synchronously from local storage + cached station data
+        fav_uuids = storage.get_favorites()
+        custom = storage.get_custom_stations()
+        cached = storage.get_cached_stations()
+        # Match favorite UUIDs against cached station data
+        fav_stations = [s for s in cached if s.get("stationuuid") in fav_uuids]
+        self._show_favorites_dialog(fav_stations, custom)
 
     def _on_add_station(self):
         dlg = AddStationDialog(self)

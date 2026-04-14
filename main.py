@@ -1,4 +1,11 @@
 import sys
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    stream=sys.stderr,
+)
 
 from PySide6.QtWidgets import QApplication
 
@@ -12,6 +19,7 @@ def main():
 
     window = MainWindow()
     window.show()
+    logging.info("Window shown, ready")
     sys.exit(app.exec())
 
 
