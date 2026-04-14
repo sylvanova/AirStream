@@ -157,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _toggleFavorite(Station station) async {
     final uuid = station.stationuuid;
+    debugPrint('AIRSTREAM: toggleFavorite ${station.name}, isFav=${_favoriteUuids.contains(uuid)}');
     if (_favoriteUuids.contains(uuid)) {
       await StorageService.removeFavorite(uuid);
       if (station.isCustom) await StorageService.removeCustomStation(uuid);
@@ -314,9 +315,9 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search stations...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: ExcludeSemantics(child: Icon(Icons.search)),
                 isDense: true,
               ),
               onChanged: _onSearchChanged,

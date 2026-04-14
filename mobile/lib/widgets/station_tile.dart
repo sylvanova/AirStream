@@ -28,6 +28,7 @@ class StationTile extends StatelessWidget {
     final favAction = isFavorite ? 'Remove from favorites' : 'Add to favorites';
 
     return Semantics(
+      key: ValueKey('${station.stationuuid}_$isFavorite'),
       onTap: onTap,
       onTapHint: 'Play',
       customSemanticsActions: {
