@@ -1,4 +1,7 @@
+import logging
 import requests
+
+log = logging.getLogger(__name__)
 
 SERVERS = [
     "https://de1.api.radio-browser.info",
@@ -20,7 +23,8 @@ def _get(path, params=None):
             )
             resp.raise_for_status()
             return resp.json()
-        except (requests.RequestException, ValueError):
+        except (requests.RequestException, ValueError) as e:
+            log.warning("API request failed: %s%s — %s", server, path, e)
             continue
     return []
 

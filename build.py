@@ -13,6 +13,7 @@ def build_windows():
     subprocess.run([
         sys.executable, "-m", "PyInstaller",
         "--noconfirm", "--windowed", "--onefile",
+        "--collect-data", "certifi",
         "--name", "AirStream",
         "main.py",
     ], check=True)
@@ -23,6 +24,7 @@ def build_macos():
     subprocess.run([
         sys.executable, "-m", "PyInstaller",
         "--noconfirm", "--windowed",
+        "--collect-data", "certifi",
         "--name", "AirStream",
         "--osx-bundle-identifier", "com.airstream.app",
         "main.py",
@@ -34,6 +36,7 @@ def build_linux():
     subprocess.run([
         sys.executable, "-m", "PyInstaller",
         "--noconfirm", "--onefile",
+        "--collect-data", "certifi",
         "--name", "AirStream",
         "main.py",
     ], check=True)

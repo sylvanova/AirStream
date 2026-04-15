@@ -1,14 +1,14 @@
 import sys
 import logging
 
-LOG_FILE = "debug.log"
+_frozen = getattr(sys, "frozen", False)
+_handlers = [logging.StreamHandler(sys.stderr)]
+if not _frozen:
+    _handlers.append(logging.FileHandler("debug.log", mode="w", encoding="utf-8"))
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.WARNING if _frozen else logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8"),
-        logging.StreamHandler(sys.stderr),
-    ],
+    handlers=_handlers,
 )
 
 from PySide6.QtWidgets import QApplication
