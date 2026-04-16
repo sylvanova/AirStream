@@ -15,13 +15,11 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStatusBar,
     QLineEdit,
-    QComboBox,
-    QListView,
 )
 
 from app.accessibility import announce, set_accessible_props
 from app.filter_bar import FilterBar
-from app.station_list import StationListView
+from app.station_list import StationListView, StationButton
 from app.player_controls import PlayerControls
 from app.favorites_dialog import AddStationDialog, FavoritesDialog
 from services.audio_player import AudioPlayer
@@ -75,7 +73,7 @@ class MainWindow(QMainWindow):
         self._player = AudioPlayer(self)
         self._initial_load = True
         self._is_searching = False
-        self._combo_cooldown = 0
+        self._combo_cooldown = 0  # kept for compatibility
         self._setup_ui()
         self._setup_shortcuts()
         self._setup_worker()
@@ -86,17 +84,15 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
 
-        # Filter bar
-        self.filter_bar = FilterBar()
-        layout.addWidget(self.filter_bar)
+        # Filter bar (adds its widgets directly to layout)
+        self.filter_bar = FilterBar(layout, parent=self)
 
         # Station list
         self.station_list = StationListView()
         layout.addWidget(self.station_list, 1)
 
-        # Player controls
-        self.player_controls = PlayerControls(self._player)
-        layout.addWidget(self.player_controls)
+        # Player controls (adds its widgets directly to layout)
+        self.player_controls = PlayerControls(self._player, layout, parent=self)
 
         # Action buttons
         action_layout = QHBoxLayout()
@@ -126,14 +122,14 @@ class MainWindow(QMainWindow):
         self.add_station_btn.clicked.connect(lambda: log.debug("BUTTON CLICK: add_station_btn"))
         self.add_station_btn.clicked.connect(self._on_add_station)
 
-        # Update favorite button when selection changes
-        self.station_list.selectionModel().selectionChanged.connect(
-            self._on_selection_changed
+        # Update favorite button when a station gets focus
+        self.station_list.station_activated.connect(
+            lambda s: self._update_fav_button_for(s)
         )
 
         # Explicit tab order: country → genre → search → station list → fav → play → view fav → add station
-        QWidget.setTabOrder(self.filter_bar.country_combo, self.filter_bar.genre_combo)
-        QWidget.setTabOrder(self.filter_bar.genre_combo, self.filter_bar.search_field)
+        QWidget.setTabOrder(self.filter_bar.country_button, self.filter_bar.genre_button)
+        QWidget.setTabOrder(self.filter_bar.genre_button, self.filter_bar.search_field)
         QWidget.setTabOrder(self.filter_bar.search_field, self.station_list)
         QWidget.setTabOrder(self.station_list, self.player_controls.fav_button)
         QWidget.setTabOrder(self.player_controls.fav_button, self.player_controls.play_button)
@@ -159,41 +155,67 @@ class MainWindow(QMainWindow):
         old_name = f"{type(old).__name__}({old.accessibleName()})" if old else "None"
         new_name = f"{type(new).__name__}({new.accessibleName()})" if new else "None"
         log.debug(f"Focus: {old_name} -> {new_name}")
-        # When focus returns from a combo dropdown list to the combo, set cooldown
-        # so Enter doesn't immediately reopen it
-        if isinstance(old, QListView) and isinstance(new, QComboBox):
-            self._combo_cooldown = time.monotonic()
+        # Track which station is selected when focus moves between station buttons
+        if isinstance(new, StationButton):
+            for i, btn in enumerate(self.station_list._buttons):
+                if btn is new:
+                    self.station_list._current_index = i
+                    self.player_controls.set_station(new.station)
+                    self._update_fav_button_for(new.station)
+                    break
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
 
-            # Log Enter/Space/Tab on buttons for debugging
+            # Log key events for debugging
+            if key in (Qt.Key.Key_Up, Qt.Key.Key_Down) and modifiers != Qt.KeyboardModifier.NoModifier:
+                log.debug(f"Arrow key={key} modifiers={modifiers}")
             if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space, Qt.Key.Key_Tab):
                 focused = QApplication.focusWidget()
                 log.debug(f"Key {key} on {type(focused).__name__ if focused else 'None'} (obj={type(obj).__name__})")
 
-            # Make Enter activate focused buttons and open combo boxes
+            # Arrow keys navigate within the station list
+            if key in (Qt.Key.Key_Down, Qt.Key.Key_Up):
+                focused = QApplication.focusWidget()
+                if isinstance(focused, StationButton):
+                    sl = self.station_list
+                    if key == Qt.Key.Key_Down:
+                        new_idx = min(sl._current_index + 1, len(sl._buttons) - 1)
+                    else:
+                        new_idx = max(sl._current_index - 1, 0)
+                    if new_idx != sl._current_index:
+                        sl._current_index = new_idx
+                        sl._focus_current()
+                    return True
+
+            # Tab on a station button exits the station list
+            if key == Qt.Key.Key_Tab and modifiers == Qt.KeyboardModifier.NoModifier:
+                focused = QApplication.focusWidget()
+                if isinstance(focused, StationButton):
+                    self.player_controls.fav_button.setFocus()
+                    return True
+
+            # Shift+Tab on a station button goes back to search
+            if key == Qt.Key.Key_Tab and modifiers == Qt.KeyboardModifier.ShiftModifier:
+                focused = QApplication.focusWidget()
+                if isinstance(focused, StationButton):
+                    # Go back, but use backtab which is the actual key
+                    self.filter_bar.search_field.setFocus()
+                    return True
+            if key == Qt.Key.Key_Backtab:
+                focused = QApplication.focusWidget()
+                if isinstance(focused, StationButton):
+                    self.filter_bar.search_field.setFocus()
+                    return True
+
+            # Make Enter activate focused buttons
             if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
                 focused = QApplication.focusWidget()
                 if isinstance(focused, QPushButton):
                     log.debug(f"Enter activating button: {focused.accessibleName()}")
                     focused.click()
-                    return True
-                if isinstance(focused, QComboBox):
-                    now = time.monotonic()
-                    if now - self._combo_cooldown < 0.3:
-                        log.debug(f"Enter on combo ignored (cooldown)")
-                        return True
-                    if focused.view().isVisible():
-                        log.debug(f"Enter closing combo: {focused.accessibleName()}")
-                        focused.hidePopup()
-                        self._combo_cooldown = now
-                    else:
-                        log.debug(f"Enter opening combo: {focused.accessibleName()}")
-                        focused.showPopup()
-                        self._combo_cooldown = now
                     return True
 
             # Space = play/pause ALWAYS, except in the search field
@@ -205,7 +227,8 @@ class MainWindow(QMainWindow):
                 self._on_space_pressed()
                 return True
 
-            if modifiers == Qt.KeyboardModifier.ControlModifier:
+            ctrl_held = modifiers & Qt.KeyboardModifier.ControlModifier or modifiers & Qt.KeyboardModifier.MetaModifier
+            if ctrl_held:
                 if key == Qt.Key.Key_P:
                     log.debug("Ctrl+P: toggle play/pause")
                     self._on_space_pressed()
@@ -256,9 +279,10 @@ class MainWindow(QMainWindow):
 
     def _on_stations_loaded(self, stations):
         if stations:
-            storage.save_cached_stations(stations)
-        else:
-            # Try cache if API returned nothing
+            if not self._is_searching:
+                storage.save_cached_stations(stations)
+        elif not self._is_searching:
+            # Only fall back to cache on initial load, not searches
             cached = storage.get_cached_stations()
             if cached:
                 stations = cached

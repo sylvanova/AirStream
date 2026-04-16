@@ -1,16 +1,17 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
+from PySide6.QtCore import QObject
+from PySide6.QtWidgets import QHBoxLayout, QPushButton, QLabel
 
 from app.accessibility import set_accessible_props, announce
 
 
-class PlayerControls(QWidget):
-    def __init__(self, player, parent=None):
+class PlayerControls(QObject):
+    def __init__(self, player, parent_layout, parent=None):
         super().__init__(parent)
         self._player = player
         self._current_station = None
         self._announced_loading = False
 
-        layout = QHBoxLayout(self)
+        layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.fav_button = QPushButton("Favorite")
@@ -25,6 +26,8 @@ class PlayerControls(QWidget):
         layout.addWidget(self.fav_button)
         layout.addWidget(self.play_button)
         layout.addWidget(self.now_playing_label, 1)
+
+        parent_layout.addLayout(layout)
 
         self.play_button.clicked.connect(self._on_play_clicked)
         self._player.state_changed.connect(self._on_state_changed)
@@ -44,7 +47,7 @@ class PlayerControls(QWidget):
             name = station.get("name", "Unknown")
             self.now_playing_label.setText(f"Now playing: {name}")
             set_accessible_props(self.now_playing_label, f"Now playing: {name}")
-            announce(self, f"Now playing: {name}")
+            announce(self.now_playing_label, f"Now playing: {name}")
 
     def toggle_pause(self):
         if self._current_station:
@@ -71,17 +74,17 @@ class PlayerControls(QWidget):
         elif state == "paused":
             self.play_button.setText("Play")
             set_accessible_props(self.play_button, "Play")
-            announce(self, "Paused")
+            announce(self.play_button, "Paused")
         elif state == "error":
             self.play_button.setText("Play")
             set_accessible_props(self.play_button, "Play")
             self.now_playing_label.setText("Playback error")
             set_accessible_props(self.now_playing_label, "Playback error")
-            announce(self, "Could not connect to this station")
+            announce(self.now_playing_label, "Could not connect to this station")
         elif state == "stopped":
             self.play_button.setText("Play")
             set_accessible_props(self.play_button, "Play")
         elif state == "buffering":
             if not self._announced_loading:
                 self._announced_loading = True
-                announce(self, "Loading")
+                announce(self.play_button, "Loading")

@@ -1,121 +1,144 @@
-from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal
-from PySide6.QtGui import QKeyEvent
-from PySide6.QtWidgets import QTableView, QAbstractItemView, QHeaderView
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QGroupBox, QVBoxLayout, QScrollArea, QPushButton, QWidget,
+    QSizePolicy, QApplication,
+)
 
 from app.accessibility import set_accessible_props
 
 
-COLUMNS = ["Name", "Country", "Tags", "Bitrate"]
+class StationButton(QPushButton):
+    """A single station row styled as a flat button for accessibility."""
+
+    def __init__(self, station, parent=None):
+        self.station = station
+        name = station.get("name", "Unknown")
+        country = station.get("country", "")
+        tags = station.get("tags", "")
+        bitrate = station.get("bitrate", 0)
+
+        parts = [name]
+        if country:
+            parts.append(country)
+        if tags:
+            parts.append(tags)
+        if bitrate:
+            parts.append(f"{bitrate} kbps")
+
+        display = "  \u2014  ".join(parts)
+        accessible = ", ".join(parts)
+
+        super().__init__(display, parent)
+        set_accessible_props(self, accessible)
+        self.setFlat(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        # NoFocus: Tab skips individual buttons. Focus is managed by the parent list.
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setStyleSheet(
+            "QPushButton { text-align: left; padding: 6px 8px; border: none; }"
+            "QPushButton:focus { background: palette(highlight); color: palette(highlighted-text); }"
+        )
 
 
-class StationTableModel(QAbstractTableModel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._stations = []
-
-    def set_stations(self, stations):
-        self.beginResetModel()
-        self._stations = stations
-        self.endResetModel()
-
-    def station_at(self, row):
-        if 0 <= row < len(self._stations):
-            return self._stations[row]
-        return None
-
-    def rowCount(self, parent=QModelIndex()):
-        return len(self._stations)
-
-    def columnCount(self, parent=QModelIndex()):
-        return len(COLUMNS)
-
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid():
-            return None
-        station = self._stations[index.row()]
-        col = index.column()
-
-        if role == Qt.ItemDataRole.DisplayRole:
-            if col == 0:
-                return station.get("name", "Unknown")
-            elif col == 1:
-                return station.get("country", "")
-            elif col == 2:
-                return station.get("tags", "")
-            elif col == 3:
-                bitrate = station.get("bitrate", 0)
-                return f"{bitrate} kbps" if bitrate else ""
-
-        if role == Qt.ItemDataRole.AccessibleTextRole:
-            name = station.get("name", "Unknown")
-            country = station.get("country", "")
-            tags = station.get("tags", "")
-            bitrate = station.get("bitrate", 0)
-            parts = [name]
-            if country:
-                parts.append(country)
-            if tags:
-                parts.append(tags)
-            if bitrate:
-                parts.append(f"{bitrate} kbps")
-            return ", ".join(parts)
-
-        return None
-
-    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
-        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
-            return COLUMNS[section]
-        return None
-
-
-class StationListView(QTableView):
+class StationListView(QGroupBox):
     station_activated = Signal(dict)
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self._model = StationTableModel(self)
-        self.setModel(self._model)
-
+        super().__init__("Stations", parent)
         set_accessible_props(self, "Stations")
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
 
-        # Selection behavior
-        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.verticalHeader().setVisible(False)
-        self.setAlternatingRowColors(True)
-        self.setSortingEnabled(True)
+        self._buttons = []
+        self._stations = []
+        self._current_index = -1
 
-        # Column sizing
-        header = self.horizontalHeader()
-        header.setStretchLastSection(False)
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
 
-        # Tab should move focus out of the table, not between cells
-        self.setTabKeyNavigation(False)
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        outer.addWidget(self._scroll)
 
-        # Activate on Enter/double-click
-        self.activated.connect(self._on_activated)
+        self._container = QWidget()
+        self._layout = QVBoxLayout(self._container)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(1)
+        self._layout.addStretch()
+        self._scroll.setWidget(self._container)
 
     def set_stations(self, stations):
-        self._model.set_stations(stations)
+        for btn in self._buttons:
+            self._layout.removeWidget(btn)
+            btn.deleteLater()
+        self._buttons.clear()
+        self._stations = stations
+        self._current_index = -1
+
+        for i, station in enumerate(stations):
+            btn = StationButton(station)
+            btn.clicked.connect(lambda checked, s=station: self._activate(s))
+            self._layout.insertWidget(i, btn)
+            self._buttons.append(btn)
+
         if stations:
-            self.selectRow(0)
+            self._current_index = 0
+            self._focus_current()
 
     def selected_station(self):
-        indexes = self.selectionModel().selectedRows()
-        if indexes:
-            return self._model.station_at(indexes[0].row())
+        if 0 <= self._current_index < len(self._stations):
+            return self._stations[self._current_index]
         return None
 
     def station_count(self):
-        return self._model.rowCount()
+        return len(self._stations)
 
-    def _on_activated(self, index):
-        station = self._model.station_at(index.row())
-        if station:
-            self.station_activated.emit(station)
+    def _activate(self, station):
+        for i, s in enumerate(self._stations):
+            if s is station:
+                self._current_index = i
+                break
+        self.station_activated.emit(station)
+
+    def _focus_current(self):
+        if self._buttons and 0 <= self._current_index < len(self._buttons):
+            btn = self._buttons[self._current_index]
+            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            btn.setFocus()
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self._scroll.ensureWidgetVisible(btn)
+
+    def focusInEvent(self, event):
+        # When Tab lands on the station list, focus the current station button
+        if self._buttons:
+            if self._current_index < 0:
+                self._current_index = 0
+            self._focus_current()
+        super().focusInEvent(event)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+
+        if key in (Qt.Key.Key_Down, Qt.Key.Key_Up):
+            if not self._buttons:
+                return
+            if key == Qt.Key.Key_Down:
+                new = min(self._current_index + 1, len(self._buttons) - 1)
+            else:
+                new = max(self._current_index - 1, 0)
+            if new != self._current_index:
+                self._current_index = new
+                self._focus_current()
+            return
+
+        if key == Qt.Key.Key_Tab:
+            # Tab exits the station list — move to the next widget in tab order
+            self.focusNextChild()
+            return
+
+        if key == (Qt.Key.Key_Tab | Qt.Key.Key_Shift):
+            self.focusPreviousChild()
+            return
+
+        super().keyPressEvent(event)
