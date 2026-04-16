@@ -25,14 +25,21 @@ Grab the latest build from [Releases](../../releases).
 |-----|--------|
 | Enter | Play station / activate button / open filter |
 | Space | Play / Pause |
-| Ctrl+P | Play / Pause |
-| Ctrl+F | Focus search bar |
-| Ctrl+B | Toggle favorite |
-| Ctrl+L | View favorites |
-| Ctrl+N | Add custom station |
-| Ctrl+Up/Down | Volume up/down |
+| Ctrl+P (Cmd+P) | Play / Pause |
+| Ctrl+F (Cmd+F) | Focus search bar |
+| Ctrl+B (Cmd+B) | Toggle favorite |
+| Ctrl+L (Cmd+L) | View favorites |
+| Ctrl+N (Cmd+N) | Add custom station |
+| Ctrl+Up/Down (Cmd+Up/Down) | Volume up/down |
+| Up/Down arrows | Navigate stations |
 | Escape | Stop playback |
 | Tab / Shift+Tab | Navigate between controls |
+
+## Desktop Accessibility
+
+- **VoiceOver (macOS)**: Full support. Filters open as dialog pickers, stations are in a navigable group (VO+Shift+Down to interact).
+- **NVDA (Windows)**: Full support. Tab navigates between controls, arrows navigate stations.
+- **Orca (Linux)**: Basic support via Qt accessibility bridge.
 
 ## Android Accessibility (TalkBack)
 
