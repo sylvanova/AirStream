@@ -164,7 +164,7 @@ class FavoritesDialog(QDialog):
             btn.setFlat(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             btn.setStyleSheet(
                 "QPushButton { text-align: left; padding: 6px 8px; border: none; }"
                 "QPushButton:focus { background: palette(highlight); color: palette(highlighted-text); }"
@@ -179,9 +179,7 @@ class FavoritesDialog(QDialog):
     def _focus_current(self):
         if self._buttons and 0 <= self._current_index < len(self._buttons):
             btn = self._buttons[self._current_index]
-            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             btn.setFocus()
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self._scroll.ensureWidgetVisible(btn)
 
     def eventFilter(self, obj, event):

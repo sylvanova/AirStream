@@ -46,7 +46,7 @@ class PickerDialog(QDialog):
             btn = _PickerButton(label)
             set_accessible_props(btn, label)
             btn.setFlat(True)
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             btn.setStyleSheet(
                 "QPushButton { text-align: left; padding: 6px 8px; border: none; }"
@@ -77,9 +77,7 @@ class PickerDialog(QDialog):
     def _focus_current(self):
         if self._buttons and 0 <= self._current_index < len(self._buttons):
             btn = self._buttons[self._current_index]
-            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             btn.setFocus()
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self._scroll.ensureWidgetVisible(btn)
 
     def eventFilter(self, obj, event):

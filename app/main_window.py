@@ -176,8 +176,14 @@ class MainWindow(QMainWindow):
                 focused = QApplication.focusWidget()
                 log.debug(f"Key {key} on {type(focused).__name__ if focused else 'None'} (obj={type(obj).__name__})")
 
-            # Arrow keys navigate within the station list
-            if key in (Qt.Key.Key_Down, Qt.Key.Key_Up):
+            # Consume bare modifier keys on station buttons to prevent focus jumping
+            if key in (Qt.Key.Key_Control, Qt.Key.Key_Meta):
+                focused = QApplication.focusWidget()
+                if isinstance(focused, StationButton):
+                    return True
+
+            # Arrow keys navigate within the station list (skip if Ctrl/Cmd held for volume)
+            if key in (Qt.Key.Key_Down, Qt.Key.Key_Up) and not (modifiers & Qt.KeyboardModifier.ControlModifier or modifiers & Qt.KeyboardModifier.MetaModifier):
                 focused = QApplication.focusWidget()
                 if isinstance(focused, StationButton):
                     sl = self.station_list

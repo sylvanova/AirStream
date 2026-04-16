@@ -33,8 +33,7 @@ class StationButton(QPushButton):
         self.setFlat(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        # NoFocus: Tab skips individual buttons. Focus is managed by the parent list.
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setStyleSheet(
             "QPushButton { text-align: left; padding: 6px 8px; border: none; }"
             "QPushButton:focus { background: palette(highlight); color: palette(highlighted-text); }"
@@ -104,9 +103,7 @@ class StationListView(QGroupBox):
     def _focus_current(self):
         if self._buttons and 0 <= self._current_index < len(self._buttons):
             btn = self._buttons[self._current_index]
-            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             btn.setFocus()
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self._scroll.ensureWidgetVisible(btn)
 
     def focusInEvent(self, event):
