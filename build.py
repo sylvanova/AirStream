@@ -25,6 +25,7 @@ def build_macos():
         sys.executable, "-m", "PyInstaller",
         "--noconfirm", "--windowed",
         "--collect-data", "certifi",
+        "--target-arch", "universal2",
         "--name", "AirStream",
         "--osx-bundle-identifier", "com.airstream.app",
         "main.py",
