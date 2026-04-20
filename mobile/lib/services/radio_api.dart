@@ -72,4 +72,12 @@ class RadioApi {
     });
     return data.cast<Map<String, dynamic>>();
   }
+
+  static Future<List<Station>> fetchStationsByUuid(List<String> uuids) async {
+    if (uuids.isEmpty) return [];
+    final data = await _get('/json/stations/byuuid', params: {
+      'uuids': uuids.join(','),
+    });
+    return data.map((j) => Station.fromJson(j)).toList();
+  }
 }

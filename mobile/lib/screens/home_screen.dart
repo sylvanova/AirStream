@@ -52,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
         RadioApi.fetchTopStations(),
         RadioApi.fetchCountries(),
         RadioApi.fetchTags(),
-        StorageService.getFavorites(),
+        StorageService.getFavoriteUuids(),
       ]);
       final stations = results[0] as List<Station>;
       if (stations.isNotEmpty) {
@@ -76,8 +76,20 @@ class _HomeScreenState extends State<HomeScreen> {
         SemanticsService.announce(
             '${stations.length} stations loaded', TextDirection.ltr);
       }
+      unawaited(_rehydratePendingFavorites());
     } catch (e) {
       await _loadCached();
+    }
+  }
+
+  Future<void> _rehydratePendingFavorites() async {
+    final pending = await StorageService.pendingFavoriteUuids();
+    if (pending.isEmpty) return;
+    try {
+      final fresh = await RadioApi.fetchStationsByUuid(pending);
+      await StorageService.rehydrateFavorites(fresh);
+    } catch (e) {
+      debugPrint('AIRSTREAM: favorite rehydrate failed: $e');
     }
   }
 
@@ -170,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
       SemanticsService.announce(
           '${station.name} removed from favorites', TextDirection.ltr);
     } else {
-      await StorageService.addFavorite(uuid);
+      await StorageService.addFavorite(station);
       setState(() => _favoriteUuids.add(uuid));
       SemanticsService.announce(
           '${station.name} added to favorites', TextDirection.ltr);
@@ -178,17 +190,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showFavorites() async {
-    final favUuids = await StorageService.getFavorites();
+    final favorites = await StorageService.getFavorites();
     final custom = await StorageService.getCustomStations();
     setState(() {
-      _favoriteUuids = favUuids.toSet();
+      _favoriteUuids = favorites.map((s) => s.stationuuid).toSet();
       _showingFavorites = !_showingFavorites;
     });
     if (_showingFavorites) {
-      // Show only favorites + custom stations
-      final favStations =
-          _stations.where((s) => favUuids.contains(s.stationuuid)).toList();
-      final allFavs = [...favStations, ...custom];
+      final allFavs = [...favorites, ...custom];
       setState(() => _stations = allFavs);
       SemanticsService.announce(
           'Favorites. ${allFavs.length} stations', TextDirection.ltr);

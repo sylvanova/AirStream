@@ -30,6 +30,7 @@ class ApiWorker(QObject):
     stations_loaded = Signal(list)
     countries_loaded = Signal(list)
     tags_loaded = Signal(list)
+    favorites_rehydrated = Signal(list)
     error = Signal(str)
 
     @Slot()
@@ -60,10 +61,21 @@ class ApiWorker(QObject):
         except Exception as e:
             self.error.emit(str(e))
 
+    @Slot(list)
+    def rehydrate_favorites(self, uuids):
+        if not uuids:
+            return
+        try:
+            stations = radio_api.fetch_stations_by_uuid(uuids)
+            self.favorites_rehydrated.emit(stations)
+        except Exception as e:
+            log.warning("favorite rehydrate failed: %s", e)
+
 
 class MainWindow(QMainWindow):
     _request_search = Signal(str, str, str)
     _request_initial = Signal()
+    _request_rehydrate = Signal(list)
 
     def __init__(self):
         super().__init__()
@@ -273,12 +285,18 @@ class MainWindow(QMainWindow):
         self._worker.stations_loaded.connect(self._on_stations_loaded)
         self._worker.countries_loaded.connect(self._on_countries_loaded)
         self._worker.tags_loaded.connect(self._on_tags_loaded)
+        self._worker.favorites_rehydrated.connect(self._on_favorites_rehydrated)
         self._worker.error.connect(self._on_api_error)
 
         self._request_initial.connect(self._worker.fetch_initial)
         self._request_search.connect(self._worker.search)
+        self._request_rehydrate.connect(self._worker.rehydrate_favorites)
 
         self._worker_thread.start()
+
+        pending = storage.pending_favorite_uuids()
+        if pending:
+            self._request_rehydrate.emit(pending)
 
     def _load_initial_data(self):
         self._request_initial.emit()
@@ -322,6 +340,9 @@ class MainWindow(QMainWindow):
 
     def _on_tags_loaded(self, tags):
         self.filter_bar.populate_genres(tags)
+
+    def _on_favorites_rehydrated(self, stations):
+        storage.update_favorites_with_stations(stations)
 
     def _show_favorites_dialog(self, fav_stations, custom_stations):
         dlg = FavoritesDialog(fav_stations, custom_stations, self)
@@ -406,7 +427,7 @@ class MainWindow(QMainWindow):
             self.player_controls.update_favorite_button(False)
             announce(self, f"{station.get('name', '')} removed from favorites")
         else:
-            storage.add_favorite(uuid)
+            storage.add_favorite(station)
             self.player_controls.update_favorite_button(True)
             announce(self, f"{station.get('name', '')} added to favorites")
 
@@ -416,12 +437,9 @@ class MainWindow(QMainWindow):
         self.player_controls.update_favorite_button(is_fav)
 
     def _on_view_favorites(self):
-        # Load favorites synchronously from local storage + cached station data
-        fav_uuids = storage.get_favorites()
+        # Favorites store the full station dict, so no cross-reference needed.
+        fav_stations = storage.get_favorites()
         custom = storage.get_custom_stations()
-        cached = storage.get_cached_stations()
-        # Match favorite UUIDs against cached station data
-        fav_stations = [s for s in cached if s.get("stationuuid") in fav_uuids]
         self._show_favorites_dialog(fav_stations, custom)
 
     def _on_add_station(self):

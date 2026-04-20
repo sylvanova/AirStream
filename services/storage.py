@@ -17,6 +17,31 @@ def _default_data():
     }
 
 
+def _migrate_favorites(data):
+    # Legacy format: favorites was a list of UUID strings. Hydrate from the
+    # cached station list where possible; UUIDs that can't be hydrated here are
+    # kept as stub entries so the view can show them and the app can rehydrate
+    # them via the API on next startup.
+    favs = data.get("favorites", [])
+    if not favs or not isinstance(favs[0], str):
+        return data
+
+    cached = {s.get("stationuuid"): s for s in data.get("cached_stations", [])}
+    new_favs = []
+    for station_uuid in favs:
+        station = cached.get(station_uuid)
+        if station:
+            new_favs.append(station)
+        else:
+            new_favs.append({
+                "stationuuid": station_uuid,
+                "name": "Loading…",
+                "_needs_rehydrate": True,
+            })
+    data["favorites"] = new_favs
+    return data
+
+
 def load_data():
     path = _data_path()
     if not os.path.exists(path):
@@ -28,6 +53,7 @@ def load_data():
             data["favorites"] = []
         if "custom_stations" not in data:
             data["custom_stations"] = []
+        data = _migrate_favorites(data)
         return data
     except (json.JSONDecodeError, OSError):
         return _default_data()
@@ -39,27 +65,58 @@ def save_data(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def add_favorite(station_uuid):
+def add_favorite(station):
+    if not isinstance(station, dict):
+        return
+    station_uuid = station.get("stationuuid")
+    if not station_uuid:
+        return
     data = load_data()
-    if station_uuid not in data["favorites"]:
-        data["favorites"].append(station_uuid)
-        save_data(data)
+    for existing in data["favorites"]:
+        if existing.get("stationuuid") == station_uuid:
+            return
+    data["favorites"].append(station)
+    save_data(data)
 
 
 def remove_favorite(station_uuid):
     data = load_data()
-    if station_uuid in data["favorites"]:
-        data["favorites"].remove(station_uuid)
-        save_data(data)
+    data["favorites"] = [
+        s for s in data["favorites"] if s.get("stationuuid") != station_uuid
+    ]
+    save_data(data)
 
 
 def is_favorite(station_uuid):
     data = load_data()
-    return station_uuid in data["favorites"]
+    return any(s.get("stationuuid") == station_uuid for s in data["favorites"])
 
 
 def get_favorites():
     return load_data()["favorites"]
+
+
+def pending_favorite_uuids():
+    return [
+        s.get("stationuuid")
+        for s in get_favorites()
+        if s.get("_needs_rehydrate") and s.get("stationuuid")
+    ]
+
+
+def update_favorites_with_stations(stations):
+    if not stations:
+        return
+    by_uuid = {s.get("stationuuid"): s for s in stations if s.get("stationuuid")}
+    data = load_data()
+    changed = False
+    for i, fav in enumerate(data["favorites"]):
+        fresh = by_uuid.get(fav.get("stationuuid"))
+        if fresh and fav.get("_needs_rehydrate"):
+            data["favorites"][i] = fresh
+            changed = True
+    if changed:
+        save_data(data)
 
 
 def add_custom_station(name, url):
