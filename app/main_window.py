@@ -83,6 +83,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(700, 500)
 
         self._player = AudioPlayer(self)
+        self._player.set_volume(storage.get_volume())
         self._initial_load = True
         self._is_searching = False
         self._combo_cooldown = 0  # kept for compatibility
@@ -393,6 +394,7 @@ class MainWindow(QMainWindow):
         vol = self._player.volume()
         new_vol = min(100, vol + 10)
         self._player.set_volume(new_vol)
+        storage.set_volume(new_vol)
         announce(self, f"Volume {new_vol} percent")
         self.status_bar.showMessage(f"Volume: {new_vol}%", 2000)
 
@@ -400,6 +402,7 @@ class MainWindow(QMainWindow):
         vol = self._player.volume()
         new_vol = max(0, vol - 10)
         self._player.set_volume(new_vol)
+        storage.set_volume(new_vol)
         announce(self, f"Volume {new_vol} percent")
         self.status_bar.showMessage(f"Volume: {new_vol}%", 2000)
 

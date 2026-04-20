@@ -147,6 +147,19 @@ def get_custom_stations():
     return load_data()["custom_stations"]
 
 
+def get_volume(default=100):
+    value = load_data().get("volume")
+    if isinstance(value, (int, float)) and 0 <= value <= 100:
+        return int(value)
+    return default
+
+
+def set_volume(percent):
+    data = load_data()
+    data["volume"] = max(0, min(100, int(percent)))
+    save_data(data)
+
+
 def save_cached_stations(stations):
     data = load_data()
     data["cached_stations"] = stations
