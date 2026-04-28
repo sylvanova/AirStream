@@ -47,39 +47,56 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
-    try {
-      final results = await Future.wait([
-        RadioApi.fetchTopStations(),
-        RadioApi.fetchCountries(),
-        RadioApi.fetchTags(),
-        StorageService.getFavoriteUuids(),
-      ]);
-      final stations = results[0] as List<Station>;
-      if (stations.isNotEmpty) {
-        await StorageService.saveCachedStations(stations);
-      }
-      final countries = results[1] as List<Map<String, dynamic>>;
-      final tags = results[2] as List<Map<String, dynamic>>;
-      debugPrint('AIRSTREAM: Loaded ${stations.length} stations, ${countries.length} countries, ${tags.length} tags');
-      if (countries.isNotEmpty) debugPrint('AIRSTREAM: First country: ${countries[0]}');
-      if (tags.isNotEmpty) debugPrint('AIRSTREAM: First tag: ${tags[0]}');
-      setState(() {
-        _stations = stations.isEmpty ? [] : stations;
-        _countries = countries;
-        _tags = tags;
-        _favoriteUuids = (results[3] as List<String>).toSet();
-        _isLoading = false;
-      });
-      if (stations.isEmpty) {
-        await _loadCached();
-      } else {
-        SemanticsService.announce(
-            '${stations.length} stations loaded', TextDirection.ltr);
-      }
-      unawaited(_rehydratePendingFavorites());
-    } catch (e) {
-      await _loadCached();
+
+    final stations = await _safeFetch('stations',
+        () => RadioApi.fetchTopStations(), const <Station>[]);
+    final favoriteUuids = await _safeFetch('favorites',
+        () => StorageService.getFavoriteUuids(), const <String>[]);
+
+    if (stations.isNotEmpty) {
+      await StorageService.saveCachedStations(stations);
     }
+
+    setState(() {
+      _stations = stations;
+      _favoriteUuids = favoriteUuids.toSet();
+      _isLoading = false;
+    });
+
+    if (stations.isEmpty) {
+      await _loadCached();
+    } else {
+      SemanticsService.announce(
+          '${stations.length} stations loaded', TextDirection.ltr);
+    }
+
+    unawaited(_loadFilters());
+    unawaited(_rehydratePendingFavorites());
+  }
+
+  Future<T> _safeFetch<T>(String label, Future<T> Function() fetch, T fallback) async {
+    try {
+      final result = await fetch();
+      debugPrint('AIRSTREAM: $label loaded');
+      return result;
+    } catch (e) {
+      debugPrint('AIRSTREAM: $label failed: $e');
+      return fallback;
+    }
+  }
+
+  Future<void> _loadFilters({bool force = false}) async {
+    if (!force && _countries.isNotEmpty && _tags.isNotEmpty) return;
+    final countries = await _safeFetch(
+        'countries', () => RadioApi.fetchCountries(), const <Map<String, dynamic>>[]);
+    final tags = await _safeFetch(
+        'tags', () => RadioApi.fetchTags(), const <Map<String, dynamic>>[]);
+    debugPrint('AIRSTREAM: filters: ${countries.length} countries, ${tags.length} tags');
+    if (!mounted) return;
+    setState(() {
+      if (countries.isNotEmpty) _countries = countries;
+      if (tags.isNotEmpty) _tags = tags;
+    });
   }
 
   Future<void> _rehydratePendingFavorites() async {
@@ -255,18 +272,55 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showFilterDialog(String title, List<Map<String, String>> options, String currentValue, void Function(String) onSelected) {
+  Future<void> _openCountryPicker() async {
+    if (_countries.isEmpty) {
+      SemanticsService.announce('Loading countries', TextDirection.ltr);
+      await _loadFilters(force: true);
+    }
+    if (!mounted) return;
+    final options = <(String name, String value)>[
+      ('All Countries', ''),
+      for (final c in _countries)
+        ('${c['name']} (${c['stationcount']})', (c['iso_3166_1'] ?? '').toString()),
+    ];
+    _showFilterDialog('Country', options, (v) {
+      setState(() => _selectedCountryCode = v);
+      _doSearch();
+    });
+  }
+
+  Future<void> _openGenrePicker() async {
+    if (_tags.isEmpty) {
+      SemanticsService.announce('Loading genres', TextDirection.ltr);
+      await _loadFilters(force: true);
+    }
+    if (!mounted) return;
+    final options = <(String name, String value)>[
+      ('All Genres', ''),
+      for (final t in _tags)
+        ('${t['name']} (${t['stationcount']})', (t['name'] ?? '').toString()),
+    ];
+    _showFilterDialog('Genre', options, (v) {
+      setState(() => _selectedTag = v);
+      _doSearch();
+    });
+  }
+
+  void _showFilterDialog(String title, List<(String, String)> options,
+      void Function(String) onSelected) {
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
         title: Text(title),
-        children: options.map((opt) => SimpleDialogOption(
-          onPressed: () {
-            Navigator.pop(ctx);
-            onSelected(opt['value']!);
-          },
-          child: Text(opt['name']!),
-        )).toList(),
+        children: options
+            .map((opt) => SimpleDialogOption(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    onSelected(opt.$2);
+                  },
+                  child: Text(opt.$1),
+                ))
+            .toList(),
       ),
     );
   }
@@ -299,12 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _showFilterDialog(
-                      'Country',
-                      [{'name': 'All Countries', 'value': ''}, ..._countries.map((c) => {'name': '${c['name']} (${c['stationcount']})', 'value': c['iso_3166_1'] ?? ''})],
-                      _selectedCountryCode,
-                      (v) { setState(() => _selectedCountryCode = v); _doSearch(); },
-                    ),
+                    onPressed: () => _openCountryPicker(),
                     child: Text(
                       _selectedCountryCode.isEmpty ? 'All Countries' : _countries.firstWhere((c) => c['iso_3166_1'] == _selectedCountryCode, orElse: () => {'name': _selectedCountryCode})['name'] ?? _selectedCountryCode,
                       overflow: TextOverflow.ellipsis,
@@ -314,12 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _showFilterDialog(
-                      'Genre',
-                      [{'name': 'All Genres', 'value': ''}, ..._tags.map((t) => {'name': '${t['name']} (${t['stationcount']})', 'value': t['name'] ?? ''})],
-                      _selectedTag,
-                      (v) { setState(() => _selectedTag = v); _doSearch(); },
-                    ),
+                    onPressed: () => _openGenrePicker(),
                     child: Text(
                       _selectedTag.isEmpty ? 'All Genres' : _selectedTag,
                       overflow: TextOverflow.ellipsis,
