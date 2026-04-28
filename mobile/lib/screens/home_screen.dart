@@ -421,40 +421,72 @@ class _HomeScreenState extends State<HomeScreen> {
                 final buffering = state?.processingState == ProcessingState.loading ||
                     state?.processingState == ProcessingState.buffering;
                 final showPause = isActive && !isPaused;
-                return Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: SafeArea(
-                    top: false,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _currentStation!.name,
-                            style: Theme.of(context).textTheme.titleSmall,
-                            overflow: TextOverflow.ellipsis,
-                            semanticsLabel: 'Now playing: ${_currentStation!.name}',
-                          ),
-                        ),
-                        if (buffering && !isPaused)
-                          const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else
-                          IconButton(
-                            icon: Icon(
-                              showPause ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                              semanticLabel: showPause ? 'Pause' : 'Play',
+                return StreamBuilder<String>(
+                  stream: widget.audioHandler.currentSongStream,
+                  initialData: widget.audioHandler.currentSong,
+                  builder: (ctx, songSnap) {
+                    final song = (songSnap.data ?? '').trim();
+                    final stationName = _currentStation!.name;
+                    final semanticsLabel = song.isEmpty
+                        ? 'Now playing: $stationName'
+                        : 'Now playing: $song on $stationName';
+                    return Container(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: SafeArea(
+                        top: false,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Semantics(
+                                label: semanticsLabel,
+                                container: true,
+                                excludeSemantics: true,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (song.isNotEmpty)
+                                      Text(
+                                        song,
+                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    Text(
+                                      stationName,
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            iconSize: 40,
-                            onPressed: _togglePause,
-                          ),
-                      ],
-                    ),
-                  ),
+                            if (buffering && !isPaused)
+                              const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            else
+                              IconButton(
+                                icon: Icon(
+                                  showPause ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                                  semanticLabel: showPause ? 'Pause' : 'Play',
+                                ),
+                                iconSize: 40,
+                                onPressed: _togglePause,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
