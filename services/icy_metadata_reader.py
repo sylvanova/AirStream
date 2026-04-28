@@ -89,3 +89,79 @@ def _read_exact(stream: BinaryIO, n: int) -> bytes | None:
         chunks.append(chunk)
         remaining -= len(chunk)
     return b"".join(chunks)
+
+
+import logging
+import urllib.request
+
+from PySide6.QtCore import QObject, Signal, Slot
+
+log = logging.getLogger(__name__)
+
+
+class IcyMetadataWorker(QObject):
+    """Reads ICY metadata from a stream URL on a worker thread.
+
+    Usage:
+        thread = QThread()
+        worker = IcyMetadataWorker(url)
+        worker.moveToThread(thread)
+        worker.title_changed.connect(audio_player._on_song_changed)
+        thread.started.connect(worker.run)
+        thread.start()
+        # Later:
+        worker.stop()
+        thread.quit()
+        thread.wait()
+    """
+
+    title_changed = Signal(str)
+    finished = Signal()
+
+    def __init__(self, url: str, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._url = url
+        self._stop_requested = False
+        self._response = None
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            req = urllib.request.Request(
+                self._url,
+                headers={
+                    "Icy-MetaData": "1",
+                    "User-Agent": "AirStream/1.0",
+                },
+            )
+            self._response = urllib.request.urlopen(req, timeout=10)
+            metaint_header = self._response.headers.get("icy-metaint")
+            if not metaint_header:
+                log.debug("ICY fallback: server did not send icy-metaint, giving up")
+                return
+            metaint = int(metaint_header)
+            last_title = ""
+            for title in iter_titles(self._response, metaint=metaint):
+                if self._stop_requested:
+                    return
+                if title != last_title:
+                    last_title = title
+                    self.title_changed.emit(title)
+        except Exception as e:  # pragma: no cover — network paths
+            log.debug("ICY fallback worker failed: %s", e)
+        finally:
+            try:
+                if self._response is not None:
+                    self._response.close()
+            except Exception:
+                pass
+            self.finished.emit()
+
+    @Slot()
+    def stop(self) -> None:
+        self._stop_requested = True
+        try:
+            if self._response is not None:
+                self._response.close()
+        except Exception:
+            pass
