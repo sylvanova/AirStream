@@ -35,7 +35,8 @@ class StationButton(QPushButton):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setStyleSheet(
-            "QPushButton { text-align: left; padding: 6px 8px; border: none; }"
+            "QPushButton { text-align: left; padding: 8px 8px; "
+            "border: none; border-bottom: 1px solid palette(mid); }"
             "QPushButton:focus { background: palette(highlight); color: palette(highlighted-text); }"
         )
 

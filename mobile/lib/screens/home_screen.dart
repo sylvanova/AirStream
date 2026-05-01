@@ -393,8 +393,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 : _stations.isEmpty
                     ? Center(
                         child: Text(_errorMessage ?? 'No stations found'))
-                    : ListView.builder(
+                    : ListView.separated(
                         itemCount: _stations.length,
+                        separatorBuilder: (ctx, i) =>
+                            const Divider(height: 1, thickness: 1),
                         itemBuilder: (ctx, i) {
                           final station = _stations[i];
                           final isPlaying = _currentStation?.stationuuid ==
