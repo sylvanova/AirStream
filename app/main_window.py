@@ -408,8 +408,6 @@ class MainWindow(QMainWindow):
 
     def _on_stop(self):
         self._player.stop()
-        self.player_controls.now_playing_label.setText("Not playing")
-        set_accessible_props(self.player_controls.now_playing_label, "Not playing")
         announce(self, "Playback stopped")
 
     def _on_fav_clicked(self):

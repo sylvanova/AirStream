@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
@@ -5,12 +7,15 @@ import '../models/station.dart';
 
 class AudioPlayerHandler extends BaseAudioHandler {
   final _player = AudioPlayer();
+  final _songController = StreamController<String>.broadcast();
+
   String _currentUrl = '';
   bool _isPaused = false;
   Station? currentStation;
+  String _currentSong = '';
 
   AudioPlayerHandler() {
-    // Forward just_audio state to audio_service's playbackState
+    // Forward just_audio state to audio_service's playbackState.
     _player.playerStateStream.listen((state) {
       if (_isPaused) return;
       final playing = state.playing;
@@ -31,21 +36,28 @@ class AudioPlayerHandler extends BaseAudioHandler {
         processingState: processingState,
       ));
     });
+
+    // ICY metadata for live streams: extract StreamTitle and surface it.
+    // Only process events that carry actual metadata (non-null info).
+    _player.icyMetadataStream.listen((event) {
+      if (event == null || event.info == null) return;
+      final title = event.info!.title?.trim() ?? '';
+      _handleIcyTitle(title);
+    });
   }
 
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+
+  /// Stream of the current song title. Emits '' when no song is known.
+  Stream<String> get currentSongStream => _songController.stream;
+
+  String get currentSong => _currentSong;
 
   Future<void> playStation(Station station) async {
     _currentUrl = station.urlResolved;
     currentStation = station;
     _isPaused = false;
-
-    // Update media notification
-    mediaItem.add(MediaItem(
-      id: station.urlResolved,
-      title: station.name,
-      artist: station.country,
-    ));
+    _resetSongFor(station);
 
     try {
       await _player.setAudioSource(
@@ -89,7 +101,12 @@ class AudioPlayerHandler extends BaseAudioHandler {
   Future<void> stop() async {
     _isPaused = false;
     _currentUrl = '';
+    final hadStation = currentStation != null;
     currentStation = null;
+    if (hadStation) {
+      _currentSong = '';
+      _songController.add('');
+    }
     await _player.stop();
     playbackState.add(playbackState.value.copyWith(
       controls: [],
@@ -103,7 +120,54 @@ class AudioPlayerHandler extends BaseAudioHandler {
   bool get isPlaying => _player.playing && !_isPaused;
   String get currentUrl => _currentUrl;
 
+  void _resetSongFor(Station station) {
+    _currentSong = '';
+    _songController.add('');
+    mediaItem.add(MediaItem(
+      id: station.urlResolved,
+      title: station.name,
+      artist: station.country,
+    ));
+  }
+
+  void _handleIcyTitle(String title) {
+    if (title == _currentSong) return;
+    _currentSong = title;
+    _songController.add(title);
+    final station = currentStation;
+    if (station == null) return;
+    if (title.isNotEmpty) {
+      mediaItem.add(MediaItem(
+        id: station.urlResolved,
+        title: title,
+        artist: station.name,
+      ));
+    } else {
+      mediaItem.add(MediaItem(
+        id: station.urlResolved,
+        title: station.name,
+        artist: station.country,
+      ));
+    }
+  }
+
+  // ---- test hooks --------------------------------------------------------
+
+  @visibleForTesting
+  void debugResetSongFor(Station station) {
+    currentStation = station;
+    _resetSongFor(station);
+  }
+
+  @visibleForTesting
+  void debugHandleIcyTitle(String title) {
+    _handleIcyTitle(title);
+  }
+
+  // ---- lifecycle ---------------------------------------------------------
+
   void dispose() {
+    _songController.close();
     _player.dispose();
   }
 }
